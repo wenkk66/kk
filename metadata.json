@@ -1,0 +1,8 @@
+{
+  "name": "Remix  Bot Orchestrator3b",
+  "description": "Termux 离线大模型与 Telegram Bot 自动化运维与内容生成工作台。集成完整一键部署脚本、离线模型选型计算、Telegram 交互仿真与智能管理指令流。",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,16 @@
+# ==============================================================================
+# Termux 定时任务配置示例 (执行: crontab -e 粘贴)
+# 启动 cron 守护进程: crond (首次配置后执行一次 crond 即可)
+# ==============================================================================
+
+# 1. 每天早上 08:30 自动由离线模型生成早报并推送到您的 Telegram
+30 8 * * * cd $HOME/termux-telegram-ai-bot && bash cron_jobs.sh "每日科技早报" "总结最新端侧AI与开源硬件动态，包含3个核心要点" >> logs/cron.log 2>&1
+
+# 2. 每晚 20:30 (开奖前) 自动拉取澳门六合彩历史记录并由 AI 离线生成下期预测走势
+30 20 * * * cd $HOME/termux-telegram-ai-bot && bash cron_jobs.sh "澳门六合彩走势预测" >> logs/cron.log 2>&1
+
+# 3. 每天晚上 21:30 自动生成今日工作复盘与明日待办清单
+30 21 * * * cd $HOME/termux-telegram-ai-bot && bash cron_jobs.sh "晚间复盘与明日待办" "提炼今日重点，提醒待办事项" >> logs/cron.log 2>&1
+
+# 4. 每隔 4 小时执行一次看门狗巡检，若 llama-server 或 bot 意外掉线则自动拉起
+0 */4 * * * pgrep -f llama-server >/dev/null || (cd $HOME/termux-telegram-ai-bot && nohup bash start.sh >> logs/watchdog.log 2>&1 &)

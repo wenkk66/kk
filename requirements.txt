@@ -1,0 +1,7 @@
+# Termux Telegram Offline AI Bot Python Dependencies (Pure Python 3.10+)
+python-telegram-bot[job-queue]>=20.8
+httpx>=0.27.0
+aiosqlite>=0.20.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+requests>=2.31.0
