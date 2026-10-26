@@ -224,14 +224,14 @@ case "$CHOICE" in
         DOWNLOAD_URL_HF="https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF/resolve/main/smollm2-1.7b-instruct-q4_k_m.gguf"
         ;;
     5)
-        MODEL_FILE="qwen2.5-3b-instruct-q4_k_m.gguf"
-        DOWNLOAD_URL_MS="https://modelscope.cn/models/qwen/Qwen2.5-3B-Instruct-GGUF/resolve/master/qwen2.5-3b-instruct-q4_k_m.gguf"
-        DOWNLOAD_URL_HF="https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
+        MODEL_FILE="qwen2.5-1.5b-instruct-q4_k_m.gguf"
+        DOWNLOAD_URL_MS="https://modelscope.cn/models/qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/master/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+        DOWNLOAD_URL_HF="https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
         ;;
     *)
-        MODEL_FILE="${model.filename}"
-        DOWNLOAD_URL_MS="${model.downloadUrlModelScope}"
-        DOWNLOAD_URL_HF="${model.downloadUrlHuggingFace}"
+        MODEL_FILE="qwen2.5-3b-instruct-q4_k_m.gguf"
+        DOWNLOAD_URL_MS="https://modelscope.cn/models/qwen/Qwen2.5-3B-Instruct-GGUF/resolve/master/qwen2.5-3b-instruct-q4_k_m.gguf"
+        DOWNLOAD_URL_HF="https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
         ;;
 esac
 
