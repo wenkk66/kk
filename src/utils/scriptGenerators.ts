@@ -339,7 +339,7 @@ if [ -z "$TG_TOKEN" ] || [ "$TG_TOKEN" = "1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ"
     exit 1
 fi
 
-MODEL_FILE="\${MODEL_NAME:-${model.filename}}"
+MODEL_FILE="\${MODEL_NAME:-qwen2.5-3b-instruct-q4_k_m.gguf}"
 MODEL_PATH="$PROJECT_DIR/models/$MODEL_FILE"
 
 if [ ! -f "$PROJECT_DIR/llama-server" ]; then
