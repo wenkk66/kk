@@ -9,7 +9,7 @@ export function getSelectedModel(modelId: string) {
 export function generateEnvExample(config: BotConfig): string {
   const model = getSelectedModel(config.selectedModelId);
   return `# ==============================================================================
-# 三星 Galaxy Note 9 / Termux 极简 2 行配置
+# 小米 11 Pro / Termux 极简 2 行配置
 # 说明：本文件可以直接保存在 Termux 根目录 ~/.env (即本项目的上级目录 ../.env)
 # 也可以保存在项目目录 ./.env 中，程序会自动智能识别！
 # ==============================================================================
@@ -21,15 +21,14 @@ BOT_TOKEN="${config.botToken || '1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ'}"
 BOT_ID="${config.adminChatId || '987654321'}"
 
 # ==============================================================================
-# 以下为可选配置（系统已针对三星 Note 9 骁龙845/猎户座9810 进行全自动最佳调优）
+# 以下为可选配置（系统已针对小米 11 Pro 骁龙888 进行全自动最佳调优）
 # 如果没有特殊需求，完全无需填写以下任何内容，保持上方 2 行即可直接启动！
 # ==============================================================================
-MODEL_NAME="${model.filename}"  # 1.5B 占用 ~1.1GB RAM，Note 9 6GB 内存常驻零杀后台
-LLAMA_THREADS="${config.threads}"                                # 绑定 Note 9 4 个高性能大核，速度快且发热低
+MODEL_NAME="${model.filename}"  # 7B 占用 ~4.7GB RAM，小米 11 Pro 旗舰推理首选
+LLAMA_THREADS="${config.threads}"                                # 绑定小米 11 Pro 6 个线程，速度快且发热低
 ADMIN_ONLY="${config.adminOnly ? 'true' : 'false'}"                              # 开启安全鉴权，仅允许 BOT_ID 对话与执行 Shell 指令
 TEMPERATURE="${config.temperature}"                              # 模型发散度 (0.1 ~ 1.0)
 MAX_TOKENS="2048"                              # 最大生成长度
-CHECK_INTERVAL_SECONDS="180"                   # 开奖结果轮询监听周期 (默认 3 分钟)
 # HTTPS_PROXY="http://127.0.0.1:7890"            # 可选网络代理
 
 # ==============================================================================
@@ -411,7 +410,7 @@ python3 bot.py
 export function generateStatusScript(): string {
   return `#!/data/data/com.termux/files/usr/bin/bash
 # ==============================================================================
-# 查看当前 Termux 节点与离线模型运行状态 (专为三星 Note 9 优化)
+# 查看当前 Termux 节点与离线模型运行状态 (专为小米 11 Pro 优化)
 # ==============================================================================
 
 CYAN='\\033[0;36m'
@@ -421,7 +420,7 @@ RED='\\033[0;31m'
 NC='\\033[0m'
 
 echo -e "\${CYAN}====================================================================\${NC}"
-echo -e "\${CYAN}        📱 三星 Galaxy Note 9 / Termux 离线节点监控状态              \${NC}"
+echo -e "\${CYAN}        📱 小米 11 Pro / Termux 离线节点监控状态              \${NC}"
 echo -e "\${CYAN}====================================================================\${NC}"
 
 ENV_FILE=""
