@@ -2,6 +2,22 @@ import { ModelSpec, ChipTier, ContentTaskTemplate } from '../types';
 
 export const GGUF_MODELS: ModelSpec[] = [
   {
+    id: 'deepseek-r1-distill-qwen-7b',
+    name: 'DeepSeek-R1-Distill-Qwen 7B (小米11 Pro 旗舰推理首选)',
+    parameters: '7.62B',
+    sizeGb: 4.72,
+    minRamGb: 6,
+    recommendedRamGb: 8,
+    quantization: 'Q4_K_M',
+    downloadUrlHuggingFace: 'https://huggingface.co/unsloth/DeepSeek-R1-Distill-Qwen-7B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf',
+    downloadUrlModelScope: 'https://modelscope.cn/models/unsloth/DeepSeek-R1-Distill-Qwen-7B-GGUF/resolve/master/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf',
+    filename: 'deepseek-r1-distill-qwen-7b-q4_k_m.gguf',
+    description: '基于 7B 强大底座蒸馏，拥有顶级的思维链推理能力、严密的数理逻辑与复杂的代码/文本生成表现，完美适配小米 11 Pro (骁龙 888 / 8GB+ RAM)。',
+    avgTokensPerSec: '8 ~ 15 tok/s (骁龙 888)',
+    features: ['顶级的思维链推理', '旗舰级数理逻辑', '复杂规律推导与复盘', '高质量 Markdown 排版'],
+    recommendedContext: 4096,
+  },
+  {
     id: 'qwen2.5-3b',
     name: 'Qwen 2.5 3B Instruct (主力推荐 / 旗舰智商)',
     parameters: '3.09B',

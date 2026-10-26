@@ -49,41 +49,41 @@ else
 fi
 
 # 2. 模型选型菜单
-echo -e "\n${YELLOW}>>> [2/2] 请选择你想要部署在手机上的离线大模型：${NC}"
-echo -e "  ${GREEN}[1] Qwen 2.5 3B Instruct (高质量创作与逻辑强推理)${NC} - 1.93GB，智商显著提升，适合复杂数理推导与专业文案"
-echo -e "  ${CYAN}[2] DeepSeek-R1-Distill-Qwen 1.5B (推理强化)${NC} - 1.0GB，强化推理思维链与逻辑运算"
-echo -e "  ${CYAN}[3] Qwen 2.5 0.5B Instruct (极致超轻)${NC} - 0.38GB，仅需 400MB 内存，毫秒级响应"
-echo -e "  ${CYAN}[4] SmolLM2 1.7B Instruct (HF 开源精选)${NC} - 1.06GB，多语言对话与指令响应流畅"
-echo -e "  ${CYAN}[5] Qwen 2.5 1.5B Instruct (轻量平衡)${NC} - 1.0GB，占用 ~1.1GB 内存，发热低"
+echo -e "\n${YELLOW}>>> [2/2] 请选择你想要部署在小米 11 Pro 手机上的离线大模型：${NC}"
+echo -e "  ${GREEN}[1] DeepSeek-R1-Distill-Qwen 7B (小米 11 Pro 旗舰推理首选)${NC} - 4.72GB，顶级思维链推理与复杂数理逻辑"
+echo -e "  ${CYAN}[2] Qwen 2.5 3B Instruct (高质量创作与逻辑强推理)${NC} - 1.93GB，智商显著提升，适合复杂推导"
+echo -e "  ${CYAN}[3] DeepSeek-R1-Distill-Qwen 1.5B (轻量推理强化)${NC} - 1.02GB，强化思维链与逻辑运算"
+echo -e "  ${CYAN}[4] Qwen 2.5 0.5B Instruct (极致超轻)${NC} - 0.38GB，仅需 400MB 内存，毫秒级响应"
+echo -e "  ${CYAN}[5] SmolLM2 1.7B Instruct (HF 开源精选)${NC} - 1.06GB，多语言对话流畅"
 
 read -p "请输入序号 [默认回车为 1]: " CHOICE
 CHOICE=${CHOICE:-1}
 
 case "$CHOICE" in
     2)
+        MODEL_FILE="qwen2.5-3b-instruct-q4_k_m.gguf"
+        DOWNLOAD_URL_MS="https://modelscope.cn/models/qwen/Qwen2.5-3B-Instruct-GGUF/resolve/master/qwen2.5-3b-instruct-q4_k_m.gguf"
+        DOWNLOAD_URL_HF="https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
+        ;;
+    3)
         MODEL_FILE="deepseek-r1-distill-qwen-1.5b-q4_k_m.gguf"
         DOWNLOAD_URL_MS="https://modelscope.cn/models/unsloth/DeepSeek-R1-Distill-Qwen-1.5B-GGUF/resolve/master/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf"
         DOWNLOAD_URL_HF="https://huggingface.co/unsloth/DeepSeek-R1-Distill-Qwen-1.5B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf"
         ;;
-    3)
+    4)
         MODEL_FILE="qwen2.5-0.5b-instruct-q4_k_m.gguf"
         DOWNLOAD_URL_MS="https://modelscope.cn/models/qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/master/qwen2.5-0.5b-instruct-q4_k_m.gguf"
         DOWNLOAD_URL_HF="https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
         ;;
-    4)
+    5)
         MODEL_FILE="smollm2-1.7b-instruct-q4_k_m.gguf"
         DOWNLOAD_URL_MS="https://modelscope.cn/models/HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF/resolve/master/smollm2-1.7b-instruct-q4_k_m.gguf"
         DOWNLOAD_URL_HF="https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF/resolve/main/smollm2-1.7b-instruct-q4_k_m.gguf"
         ;;
-    5)
-        MODEL_FILE="qwen2.5-1.5b-instruct-q4_k_m.gguf"
-        DOWNLOAD_URL_MS="https://modelscope.cn/models/qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/master/qwen2.5-1.5b-instruct-q4_k_m.gguf"
-        DOWNLOAD_URL_HF="https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
-        ;;
     *)
-        MODEL_FILE="qwen2.5-3b-instruct-q4_k_m.gguf"
-        DOWNLOAD_URL_MS="https://modelscope.cn/models/qwen/Qwen2.5-3B-Instruct-GGUF/resolve/master/qwen2.5-3b-instruct-q4_k_m.gguf"
-        DOWNLOAD_URL_HF="https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
+        MODEL_FILE="deepseek-r1-distill-qwen-7b-q4_k_m.gguf"
+        DOWNLOAD_URL_MS="https://modelscope.cn/models/unsloth/DeepSeek-R1-Distill-Qwen-7B-GGUF/resolve/master/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf"
+        DOWNLOAD_URL_HF="https://huggingface.co/unsloth/DeepSeek-R1-Distill-Qwen-7B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf"
         ;;
 esac
 
