@@ -16,7 +16,7 @@ export default function App() {
   const [config, setConfig] = useState<BotConfig>({
     botToken: '',
     adminChatId: '',
-    selectedModelId: 'qwen2.5-1.5b',
+    selectedModelId: 'qwen2.5-3b',
     backendEngine: 'llamacpp',
     threads: 4,
     contextSize: 4096,
