@@ -338,7 +338,18 @@ if [ -z "$TG_TOKEN" ] || [ "$TG_TOKEN" = "1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ"
     exit 1
 fi
 
-MODEL_FILE="\${MODEL_NAME:-deepseek-r1-distill-qwen-1.5b-q4_k_m.gguf}"
+if [ -n "$MODEL_NAME" ] && [ -f "$PROJECT_DIR/models/$MODEL_NAME" ]; then
+    MODEL_FILE="$MODEL_NAME"
+else
+    # 智能扫描 models/ 目录下的 .gguf 模型文件
+    FOUND_GGUF=$(find "$PROJECT_DIR/models" -maxdepth 1 -name "*.gguf" 2>/dev/null | head -n 1)
+    if [ -n "$FOUND_GGUF" ]; then
+        MODEL_FILE=$(basename "$FOUND_GGUF")
+        echo -e "\${GREEN}✓ 智能检测到本地模型: $MODEL_FILE\${NC}"
+    else
+        MODEL_FILE="deepseek-r1-distill-qwen-7b-q4_k_m.gguf"
+    fi
+fi
 MODEL_PATH="$PROJECT_DIR/models/$MODEL_FILE"
 
 if [ ! -f "$PROJECT_DIR/llama-server" ]; then
