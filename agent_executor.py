@@ -30,6 +30,7 @@ from pattern_engine import (
     run_monte_carlo_persistent_calculation,
     generate_ai_custom_formula,
     run_comprehensive_backtest,
+    get_historical_draws_with_audit,
 )
 from lottery import (
     fetch_lottery_history,
@@ -314,26 +315,54 @@ def run_lottery_prediction_flow(sample_size: int = 200, num_codes: int = 18, llm
     pred = generate_persistent_prediction(sample_size=sample_size, num_codes=num_codes, llm_caller=llm_caller)
     return pred["full_report"]
 
-def view_recent_draw_history(limit: int = 5) -> str:
-    """查看近多期开奖结果 (仅限纯粹查看历史走势指令)"""
-    draws = fetch_lottery_history("2026")
-    if not draws:
-        draws = fetch_lottery_history("2025")
-    if not draws:
-        return "❌ 暂时无法连接到开奖历史接口，请检查手机网络。"
+def view_recent_draw_history(limit: int = 5, page: int = 1) -> str:
+    """查看历史开奖与预测回测台账 (整合18码、六肖、特波中奖核验与翻页指引)"""
+    res = get_historical_draws_with_audit(page=page, page_size=limit)
+    total_draws = res["total_draws"]
+    total_pages = res["total_pages"]
+    cur_page = res["page"]
+    draws = res["draws"]
 
-    stats = compute_statistics(draws, limit)
-    recent = stats["recentDraws"]
+    text = f"📜 **【澳门六合彩历史开奖与预测回测台账】** (第 {cur_page}/{total_pages} 页 · 共 {total_draws} 期)\n"
+    text += "_采用步进零未来信息回溯，逐期比对 18 码大底、六肖与特波核验详情_\n\n"
 
-    text = f"📊 **【澳门六合彩近 {len(recent)} 期开奖走势】**\n\n"
-    for d in recent:
-        wave_str = WAVE_CN.get(d["specialWave"], d["specialWave"])
+    for d in draws:
+        exp = d["expect"]
+        date_str = d.get("open_time", "")[:10]
+        sp_num = d["special_number"]
+        sp_zod = d["special_zodiac"]
+        sp_wave = d["special_wave"]
+        sp_wave_str = WAVE_CN.get(sp_wave, sp_wave)
+
+        reg_str = ", ".join(f"{n:02d}" for n in d["regular_numbers"])
+        matched_reg = d["matched_regular_count"]
+        matched_sp = d["matched_special"]
+        hit_zod = d["hit_special_zodiac"]
+        hit_wave = d["hit_special_wave"]
+
+        badges = []
+        if matched_sp:
+            badges.append("★特码命中")
+        if hit_zod:
+            badges.append(f"🐉中特肖[{sp_zod}]")
+        if hit_wave:
+            badges.append(f"🌊中特波[{sp_wave_str}]")
+        badges.append(f"🎯中{matched_reg}/6平码")
+        badge_line = " ".join(f"`[{b}]`" for b in badges)
+
+        pred_zodiacs = ", ".join(d["predicted_six_zodiacs"])
         text += (
-            f"• **第 {d['expect']} 期** ({d['openTime'][:10]})\n"
-            f"  正码: `{', '.join(f'{n:02d}' for n in d['regularNumbers'])}` | 特码: **`{d['specialNumber']:02d}`** ({wave_str} · {d['specialZodiac']})\n"
-            f"  和值: `{d['sum']}`\n\n"
+            f"🔹 **第 {exp} 期** ({date_str})  {badge_line}\n"
+            f"• 真实开奖: `{reg_str}` + **`{sp_num:02d}`** ({sp_zod}/{sp_wave_str})\n"
+            f"• 预测18码: 命中 **{matched_reg}** 个平码 {'+ **特码已中！**' if matched_sp else '(特码未中)'}\n"
+            f"• 预测六肖: `{pred_zodiacs}` -> {'✅ 特肖命中' if hit_zod else '⚪ 未中'}\n"
+            f"• 综合判定: *{d['win_type']}*\n\n"
         )
-    text += "💡 如需基于以上走势挖掘数学规律并推算号码，请直接对我说「通过最新200期开奖记录查找规律预测18码」或发送 `/predict`。"
+
+    text += (
+        f"💡 **翻页指引**: 发送 `/lottery_chart <页码>` 可翻页查阅历史（例如 `/lottery_chart 2`），"
+        f"发送 `/predict` 执行下期 200 期 18 码 AI 权威收敛预测！"
+    )
     return text
 
 # ------------------------------------------------------------------------------
@@ -413,10 +442,13 @@ def dispatch_natural_language_intent(user_text: str, chat_id: int, llm_caller=No
     if any(k in lower for k in mine_keywords) or (("挖掘" in lower or "拟合" in lower or "重算" in lower or "重训" in lower) and ("规律" in lower or "公式" in lower or "模型" in lower or "历史" in lower)):
         return run_pattern_mining(), "mine_patterns"
 
-    # 9. 自然语言纯查看历史开奖走势 (仅在非预测意图时生效)
-    history_keywords = ["开奖走势", "最近几期开什么", "上期开什么", "近几期开奖", "历史开奖走势", "看下历史记录", "查看开奖记录", "历史开奖走势图"]
+    # 9. 自然语言查看历史开奖与回测核验台账 (仅在非预测意图时生效)
+    history_keywords = [
+        "开奖走势", "最近几期开什么", "上期开什么", "近几期开奖", "历史开奖走势", "看下历史记录",
+        "查看开奖记录", "历史开奖走势图", "历史开奖", "回测台账", "开奖台账", "历史开奖与回测台账"
+    ]
     if any(k in lower for k in history_keywords):
-        return view_recent_draw_history(5), "view_history"
+        return view_recent_draw_history(5, 1), "view_history"
 
     # 10. 自然语言添加待办事项
     add_task_match = re.search(r'(?:记(?:个)?待办|提醒我|添加待办|新建待办|备忘)(?:：|:|\s+)?(.+)', text)

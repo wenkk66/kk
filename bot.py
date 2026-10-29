@@ -276,8 +276,8 @@ def get_main_reply_keyboard():
         return None
     keyboard = [
         [KeyboardButton("🎰 200期18码 (AI万轮收敛)")],
-        [KeyboardButton("📈 50期回测胜率"), KeyboardButton("📐 算法数学公式")],
-        [KeyboardButton("✨ AI发掘新模板"), KeyboardButton("📊 历史开奖走势")],
+        [KeyboardButton("📜 历史开奖与回测台账"), KeyboardButton("📈 50期回测胜率")],
+        [KeyboardButton("📐 算法数学公式"), KeyboardButton("✨ AI发掘新模板")],
         [KeyboardButton("📱 手机状态遥测"), KeyboardButton("📝 本地待办事项")],
         [KeyboardButton("🤖 离线模型规格"), KeyboardButton("📜 实时运行日志")],
     ]
@@ -366,6 +366,26 @@ async def send_long_message(update: Update, text: str, reply_markup=None):
                 logger.error(f"发送消息片段失败: {e}")
 
 # ----------------- 指令处理函数 -----------------
+async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """刷新并激活屏幕底部的常驻快捷键盘菜单"""
+    if not check_auth(update):
+        return
+    text = (
+        "🎛️ *【已为您激活最新底部快捷键盘菜单】*\n\n"
+        "• 请查看屏幕最下方的常驻键盘按钮，点击即可直达对应功能：\n"
+        "  1. 🎰 `200期18码 (AI万轮收敛)`: 启动 200 期规律挖掘与万轮收敛权威预测\n"
+        "  2. 📜 `历史开奖与回测台账`: 查看历史开奖与 18 码/六肖/特码命中核验（支持翻页）\n"
+        "  3. 📈 `50期回测胜率`: 查看 50 期严谨步进回测综合胜率报告\n"
+        "  4. 📐 `算法数学公式`: 查看持久保存在 SQLite 中的规律公式库\n"
+        "  5. 📱 `手机状态遥测`: 获取小米 11 Pro 电池、发热、内存实时负载\n\n"
+        "💡 *提示*: 如果底部键盘未展开，请点击输入框右侧的「🎛️ 四宫格 / 键盘」图标即可展开！"
+    )
+    await update.message.reply_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=get_main_reply_keyboard()
+    )
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id if update.effective_chat else 0
     if not check_auth(update):
@@ -997,8 +1017,52 @@ async def chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
         return
 
-    text = update.message.text
+    text = update.message.text.strip()
     if not text:
+        return
+
+    # 快捷键盘菜单精准直通匹配 (防止自然语言模糊误判)
+    if text in ["📜 历史开奖与回测台账", "历史开奖与回测台账", "开奖台账", "回测台账"]:
+        loop = asyncio.get_running_loop()
+        reply_text, reply_markup = await loop.run_in_executor(None, format_audit_history_message, 1, 5)
+        await update.message.reply_text(reply_text, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup)
+        return
+
+    if text in ["🎰 200期18码 (AI万轮收敛)", "200期18码", "200期18码 (AI万轮收敛)"]:
+        await lottery_command(update, context)
+        return
+
+    if text in ["📈 50期回测胜率", "50期回测胜率"]:
+        await backtest_command(update, context)
+        return
+
+    if text in ["📐 算法数学公式", "算法数学公式"]:
+        await patterns_command(update, context)
+        return
+
+    if text in ["✨ AI发掘新模板", "AI发掘新模板"]:
+        context.args = ["new"]
+        await formula_command(update, context)
+        return
+
+    if text in ["📱 手机状态遥测", "手机状态遥测"]:
+        await status_command(update, context)
+        return
+
+    if text in ["📝 本地待办事项", "本地待办事项"]:
+        await task_command(update, context)
+        return
+
+    if text in ["🤖 离线模型规格", "离线模型规格"]:
+        await model_command(update, context)
+        return
+
+    if text in ["📜 实时运行日志", "实时运行日志"]:
+        await logs_command(update, context)
+        return
+
+    if text in ["菜单", "键盘", "快捷菜单", "主菜单", "唤起菜单"]:
+        await menu_command(update, context)
         return
 
     chat_id = update.effective_chat.id
@@ -1215,14 +1279,35 @@ def main():
     else:
         print("✓ 使用系统环境变量配置运行")
 
-    print(f"📱 适配机型: 三星 Galaxy Note 9 / ARM64")
+    print(f"📱 适配机型: 小米 11 Pro (骁龙 888 / 6 线程)")
     print(f"🤖 机器人 Token: {BOT_TOKEN[:6]}*** (已加载)")
     print(f"👤 管理员 ID: {ADMIN_CHAT_ID} (权限控制: {'开启' if ADMIN_ONLY else '公共开放'})")
     print(f"🧠 本地离线模型: {MODEL_NAME}")
     print(f"🐍 核心运行时: 纯 Python 3.10+ 异步事件中枢")
     print(f"🚀 正在初始化 Telegram Bot 异步服务 (集成常驻 Reply 键盘与 Inline 按钮)...")
 
-    builder = ApplicationBuilder().token(BOT_TOKEN).post_init(register_bot_commands)
+    async def on_startup(application):
+        await register_bot_commands(application)
+        if ADMIN_CHAT_ID and ADMIN_CHAT_ID > 0:
+            try:
+                startup_msg = (
+                    "🚀 *【Xiaomi 11 Pro 离线大模型 & 澳门六合彩预测管家已成功启动】*\n\n"
+                    f"• *当前模型*: `{MODEL_NAME}`\n"
+                    f"• *计算中枢*: **200期大样本规律挖掘 + 10,000轮蒙特卡洛AI收敛 (18码一体化)**\n"
+                    f"• *严禁随机*: 100% 纯历史数据发掘与高维矩阵松弛\n\n"
+                    "🎛️ *已为您激活屏幕底部快捷键盘菜单*，请直接轻点下方按钮开始使用！"
+                )
+                await application.bot.send_message(
+                    chat_id=ADMIN_CHAT_ID,
+                    text=startup_msg,
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=get_main_reply_keyboard()
+                )
+                logger.info(f"已向管理员 {ADMIN_CHAT_ID} 发送启动通知并激活底部键盘菜单")
+            except Exception as e:
+                logger.warning(f"发送启动通知失败 (如首次配置): {e}")
+
+    builder = ApplicationBuilder().token(BOT_TOKEN).post_init(on_startup)
     if HTTPS_PROXY:
         print(f"ℹ️ 使用代理访问 Telegram API: {HTTPS_PROXY}")
         builder = builder.proxy(HTTPS_PROXY).get_updates_proxy(HTTPS_PROXY)
@@ -1231,6 +1316,8 @@ def main():
 
     # 注册命令
     app.add_handler(CommandHandler("start", start_command))
+    app.add_handler(CommandHandler("menu", menu_command))
+    app.add_handler(CommandHandler("keyboard", menu_command))
     app.add_handler(CommandHandler("help", start_command))
     app.add_handler(CommandHandler("write", write_command))
     app.add_handler(CommandHandler("summarize", summarize_command))

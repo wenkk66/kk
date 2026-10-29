@@ -990,10 +990,11 @@ async def call_offline_llm(user_input: str, system_override: Optional[str] = Non
 
 def get_main_reply_keyboard():
     keyboard = [
-        [KeyboardButton("🎰 预测200期18码"), KeyboardButton("📐 查看算法公式")],
-        [KeyboardButton("🔄 重新挖掘规律"), KeyboardButton("📊 历史开奖走势")],
-        [KeyboardButton("📱 手机状态监控"), KeyboardButton("📝 我的待办事项")],
-        [KeyboardButton("🤖 离线模型规格"), KeyboardButton("❓ 帮助与指令")],
+        [KeyboardButton("🎰 200期18码 (AI万轮收敛)")],
+        [KeyboardButton("📜 历史开奖与回测台账"), KeyboardButton("📈 50期回测胜率")],
+        [KeyboardButton("📐 算法数学公式"), KeyboardButton("✨ AI发掘新模板")],
+        [KeyboardButton("📱 手机状态遥测"), KeyboardButton("📝 本地待办事项")],
+        [KeyboardButton("🤖 离线模型规格"), KeyboardButton("📜 实时运行日志")],
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
