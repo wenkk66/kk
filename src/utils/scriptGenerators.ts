@@ -870,6 +870,7 @@ from telegram import (
     Update,
     ReplyKeyboardMarkup,
     KeyboardButton,
+    ReplyKeyboardRemove,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     BotCommand,
@@ -988,33 +989,50 @@ async def call_offline_llm(user_input: str, system_override: Optional[str] = Non
     except Exception as e:
         return f"❌ 离线推理过程发生异常: {str(e)}"
 
-def get_main_reply_keyboard():
-    keyboard = [
-        [KeyboardButton("🎰 200期18码 (AI万轮收敛)")],
-        [KeyboardButton("📜 历史开奖与回测台账"), KeyboardButton("📈 50期回测胜率")],
-        [KeyboardButton("📐 算法数学公式"), KeyboardButton("✨ AI发掘新模板")],
-        [KeyboardButton("📱 手机状态遥测"), KeyboardButton("📝 本地待办事项")],
-        [KeyboardButton("🤖 离线模型规格"), KeyboardButton("📜 实时运行日志")],
-    ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-
-def get_prediction_inline_keyboard(sample_size: int = 200, num_codes: int = 18):
+def get_prediction_inline_keyboard(sample_size: int = 200, num_codes: int = 18, target_expect: str = ""):
+    btn_label = f"🔄 测算第 {target_expect} 期 ({num_codes}码)" if target_expect else f"🎯 预测{sample_size}期{num_codes}码"
     keyboard = [
         [
-            InlineKeyboardButton("🎯 预测200期18码", callback_data="cb:predict:200:18"),
-            InlineKeyboardButton("🎲 预测100期12码", callback_data="cb:predict:100:12"),
+            InlineKeyboardButton(btn_label, callback_data=f"cb:predict:{sample_size}:{num_codes}"),
+            InlineKeyboardButton("📜 历史开奖与回测台账", callback_data="cb:chart:1"),
         ],
         [
+            InlineKeyboardButton("📈 50期回测胜率", callback_data="cb:backtest"),
             InlineKeyboardButton("📐 算法公式库", callback_data="cb:patterns"),
-            InlineKeyboardButton("🔄 重新拟合挖掘", callback_data="cb:mine"),
         ],
+        [
+            InlineKeyboardButton("✨ AI发掘新模板", callback_data="cb:formula:new"),
+            InlineKeyboardButton("📱 手机状态遥测", callback_data="cb:status"),
+        ],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def get_general_inline_keyboard(target_expect: str = ""):
+    pred_label = f"🎰 测算第 {target_expect} 期 (18码)" if target_expect else "🎰 预测下期 (200期18码)"
+    keyboard = [
+        [
+            InlineKeyboardButton(pred_label, callback_data="cb:predict:200:18"),
+            InlineKeyboardButton("📜 历史开奖与回测台账", callback_data="cb:chart:1"),
+        ],
+        [
+            InlineKeyboardButton("📈 50期回测胜率", callback_data="cb:backtest"),
+            InlineKeyboardButton("📐 算法数学公式库", callback_data="cb:patterns"),
+        ],
+        [
+            InlineKeyboardButton("✨ AI发掘新模板", callback_data="cb:formula:new"),
+            InlineKeyboardButton("📱 手机状态遥测", callback_data="cb:status"),
+        ],
+        [
+            InlineKeyboardButton("📝 本地待办事项", callback_data="cb:tasks"),
+            InlineKeyboardButton("🤖 离线模型规格", callback_data="cb:model"),
+        ]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 async def send_long_message(update: Update, text: str, reply_markup=None):
     if not text:
         return
-    markup = reply_markup or get_main_reply_keyboard()
+    markup = reply_markup
     chunk_size = 3800
     for i in range(0, len(text), chunk_size):
         chunk = text[i:i + chunk_size]
@@ -1029,20 +1047,34 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     welcome_text = (
         "🤖 *Termux 离线大模型智能管家已上线*\\n\\n"
-        f"• *宿主硬件*: Android 手机本地 (Termux aarch64)\\n"
+        f"• *宿主硬件*: 小米 11 Pro (Termux aarch64)\\n"
         f"• *当前模型*: \`{MODEL_NAME}\`\\n"
-        f"• *推理接口*: \`{LLAMA_API_BASE}\`\\n\\n"
+        f"• *推理接口*: \`{LLAMA_API_BASE}\`\\n"
+        f"• *核心算法*: **200期大样本规律挖掘 + 10,000轮蒙特卡洛AI收敛预测 (18码一体化)**\\n"
+        f"• *交互设计*: **纯随帖 Inline 按钮交互** (无底部多余键盘)\\n\\n"
         "✨ *常用核心指令*:\\n"
         "• \`/predict\` : 走势规律挖掘与 18 码预测\\n"
+        "• \`/lottery_chart\` : 查看历史开奖与预测回测台账 (带翻页)\\n"
         "• \`/patterns\` : 查看 SQLite 持久化数学模型库\\n"
         "• \`/mine\` : 重新拟合数学公式参数\\n"
-        "• \`/lottery_chart\` : 查看最近多期开奖走势图\\n"
         "• \`/status\` : 实时查看手机电量与硬件温度\\n"
         "• \`/task\` : 本地 SQLite 待办日程管理\\n"
         "• \`/cmd <命令>\` : 远程安全执行 Shell 命令\\n"
         "• \`/write <主题>\` : 离线长文创作与行业报告"
     )
-    await update.message.reply_text(welcome_text, parse_mode=ParseMode.MARKDOWN, reply_markup=get_main_reply_keyboard())
+    if ReplyKeyboardRemove:
+        try:
+            await update.message.reply_text(welcome_text, parse_mode=ParseMode.MARKDOWN, reply_markup=ReplyKeyboardRemove())
+        except Exception:
+            await update.message.reply_text(welcome_text, parse_mode=ParseMode.MARKDOWN)
+    else:
+        await update.message.reply_text(welcome_text, parse_mode=ParseMode.MARKDOWN)
+
+    await update.message.reply_text(
+        "👇 *【快捷功能大厅 · 点击下方随帖按钮即可操作】*：",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=get_general_inline_keyboard()
+    )
 
 async def lottery_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
@@ -1056,7 +1088,8 @@ async def lottery_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await status_msg.delete()
     except Exception:
         pass
-    await send_long_message(update, pred['full_report'], reply_markup=get_prediction_inline_keyboard(200, 18))
+    target_exp = pred.get("target_expect", "")
+    await send_long_message(update, pred['full_report'], reply_markup=get_prediction_inline_keyboard(200, 18, target_exp))
 
 async def patterns_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):

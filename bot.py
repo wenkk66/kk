@@ -57,6 +57,7 @@ try:
         Update,
         ReplyKeyboardMarkup,
         KeyboardButton,
+        ReplyKeyboardRemove,
         InlineKeyboardMarkup,
         InlineKeyboardButton,
         BotCommand,
@@ -80,6 +81,7 @@ except ImportError:
     CallbackQueryHandler = None
     ReplyKeyboardMarkup = None
     KeyboardButton = None
+    ReplyKeyboardRemove = None
     InlineKeyboardMarkup = None
     InlineKeyboardButton = None
     BotCommand = None
@@ -269,78 +271,59 @@ async def call_offline_llm(user_input: str, system_override: Optional[str] = Non
         logger.error(f"调用离线模型发生异常: {e}", exc_info=True)
         return f"❌ 离线推理过程发生异常: {str(e)}"
 
-# ----------------- 交互式键盘菜单构建 -----------------
-def get_main_reply_keyboard():
-    """构建固定在屏幕底部的快捷回复键盘 (ReplyKeyboardMarkup) - 全新优化5行结构"""
-    if not ReplyKeyboardMarkup or not KeyboardButton:
-        return None
-    keyboard = [
-        [KeyboardButton("🎰 200期18码 (AI万轮收敛)")],
-        [KeyboardButton("📜 历史开奖与回测台账"), KeyboardButton("📈 50期回测胜率")],
-        [KeyboardButton("📐 算法数学公式"), KeyboardButton("✨ AI发掘新模板")],
-        [KeyboardButton("📱 手机状态遥测"), KeyboardButton("📝 本地待办事项")],
-        [KeyboardButton("🤖 离线模型规格"), KeyboardButton("📜 实时运行日志")],
-    ]
-    try:
-        return ReplyKeyboardMarkup(
-            keyboard,
-            resize_keyboard=True,
-            is_persistent=True,
-            one_time_keyboard=False,
-        )
-    except TypeError:
-        return ReplyKeyboardMarkup(
-            keyboard,
-            resize_keyboard=True,
-            one_time_keyboard=False,
-        )
-
-def get_prediction_inline_keyboard(sample_size: int = 200, num_codes: int = 18):
-    """构建预测结果下方的 Inline 交互按钮"""
+# ----------------- 交互式随帖 Inline 按钮构建 (无屏幕底部常驻键盘) -----------------
+def get_prediction_inline_keyboard(sample_size: int = 200, num_codes: int = 18, target_expect: str = ""):
+    """构建预测结果下方的 Inline 交互按钮 (纯随帖按钮，贴心直观标明期数)"""
     if not InlineKeyboardMarkup or not InlineKeyboardButton:
         return None
+    target_btn_label = f"🔄 测算第 {target_expect} 期 ({num_codes}码)" if target_expect else f"🔄 重新验算 ({sample_size}期·{num_codes}码)"
     keyboard = [
         [
-            InlineKeyboardButton("🔄 重新验算 (200期·万轮)", callback_data=f"cb:predict:{sample_size}:{num_codes}"),
+            InlineKeyboardButton(target_btn_label, callback_data=f"cb:predict:{sample_size}:{num_codes}"),
+            InlineKeyboardButton("📜 历史开奖与回测台账", callback_data="cb:chart:1"),
+        ],
+        [
             InlineKeyboardButton("📈 50期回测胜率", callback_data="cb:backtest"),
+            InlineKeyboardButton("📐 算法数学公式库", callback_data="cb:patterns"),
         ],
         [
-            InlineKeyboardButton("📐 算法公式库", callback_data="cb:patterns"),
             InlineKeyboardButton("✨ AI发掘新模板", callback_data="cb:formula:new"),
-        ],
-        [
-            InlineKeyboardButton("📊 历史走势图", callback_data="cb:history"),
             InlineKeyboardButton("📱 手机状态遥测", callback_data="cb:status"),
         ],
     ]
     return InlineKeyboardMarkup(keyboard)
 
-def get_general_inline_keyboard():
-    """构建通用 Inline 交互按钮"""
+def get_general_inline_keyboard(target_expect: str = ""):
+    """构建通用 Inline 交互按钮 (纯随帖按钮，无需多余屏幕底部键盘)"""
     if not InlineKeyboardMarkup or not InlineKeyboardButton:
         return None
+    pred_label = f"🎰 测算第 {target_expect} 期 (18码)" if target_expect else "🎰 预测下期 (200期18码)"
     keyboard = [
         [
-            InlineKeyboardButton("🎰 200期18码 (AI万轮)", callback_data="cb:predict:200:18"),
+            InlineKeyboardButton(pred_label, callback_data="cb:predict:200:18"),
+            InlineKeyboardButton("📜 历史开奖与回测台账", callback_data="cb:chart:1"),
+        ],
+        [
             InlineKeyboardButton("📈 50期回测胜率", callback_data="cb:backtest"),
+            InlineKeyboardButton("📐 算法数学公式库", callback_data="cb:patterns"),
         ],
         [
-            InlineKeyboardButton("📐 算法公式库", callback_data="cb:patterns"),
             InlineKeyboardButton("✨ AI发掘新模板", callback_data="cb:formula:new"),
+            InlineKeyboardButton("📱 手机状态遥测", callback_data="cb:status"),
         ],
         [
-            InlineKeyboardButton("📱 手机状态遥测", callback_data="cb:status"),
             InlineKeyboardButton("📝 本地待办事项", callback_data="cb:tasks"),
+            InlineKeyboardButton("🤖 离线模型规格", callback_data="cb:model"),
         ]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 # ----------------- 消息分段安全发送 -----------------
 async def send_long_message(update: Update, text: str, reply_markup=None):
-    """解决 Telegram 4096 字符限制并防 Markdown 语法碎裂，支持快捷键盘注入"""
+    """解决 Telegram 4096 字符限制并防 Markdown 语法碎裂，纯随帖 Inline 按钮交互"""
     if not text:
         return
-    markup = reply_markup if reply_markup is not None else get_main_reply_keyboard()
+    markup = reply_markup
     chunk_size = 3800
     chunks = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
     msg_target = update.message if update.message else (update.callback_query.message if update.callback_query else None)
@@ -367,23 +350,25 @@ async def send_long_message(update: Update, text: str, reply_markup=None):
 
 # ----------------- 指令处理函数 -----------------
 async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """刷新并激活屏幕底部的常驻快捷键盘菜单"""
+    """移除多余底部键盘，输出纯随帖便捷交互面板"""
     if not check_auth(update):
         return
     text = (
-        "🎛️ *【已为您激活最新底部快捷键盘菜单】*\n\n"
-        "• 请查看屏幕最下方的常驻键盘按钮，点击即可直达对应功能：\n"
-        "  1. 🎰 `200期18码 (AI万轮收敛)`: 启动 200 期规律挖掘与万轮收敛权威预测\n"
-        "  2. 📜 `历史开奖与回测台账`: 查看历史开奖与 18 码/六肖/特码命中核验（支持翻页）\n"
-        "  3. 📈 `50期回测胜率`: 查看 50 期严谨步进回测综合胜率报告\n"
-        "  4. 📐 `算法数学公式`: 查看持久保存在 SQLite 中的规律公式库\n"
-        "  5. 📱 `手机状态遥测`: 获取小米 11 Pro 电池、发热、内存实时负载\n\n"
-        "💡 *提示*: 如果底部键盘未展开，请点击输入框右侧的「🎛️ 四宫格 / 键盘」图标即可展开！"
+        "🎛️ *【快捷功能大厅 · 随帖交互按钮】*\n\n"
+        "• 已为您移除屏幕底部多余的常驻键盘菜单。\n"
+        "• 所有核心操作均已升级为随帖附带的便捷交互按钮，界面更清爽、更高效！\n"
+        "• 轻点下方按钮即可一键直达对应功能："
     )
+    # 若用户手机上残留有底部旧键盘，发送 ReplyKeyboardRemove 予以收起
+    if ReplyKeyboardRemove:
+        try:
+            await update.message.reply_text("🧹 已收起屏幕底部旧键盘，已启用纯随帖交互按钮。", reply_markup=ReplyKeyboardRemove())
+        except Exception:
+            pass
     await update.message.reply_text(
         text,
         parse_mode=ParseMode.MARKDOWN,
-        reply_markup=get_main_reply_keyboard()
+        reply_markup=get_general_inline_keyboard()
     )
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -401,21 +386,19 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     welcome_text = (
         "🤖 *Termux 离线大模型智能管家已就绪*\n\n"
-        f"• *宿主硬件*: Android 手机本地 (Termux aarch64 纯 Python 异步中枢)\n"
+        f"• *宿主硬件*: 小米 11 Pro (Termux aarch64 纯 Python 异步中枢)\n"
         f"• *当前模型*: `{MODEL_NAME}`\n"
         f"• *离线接口*: `{LLAMA_API_BASE}`\n"
         f"• *核心算法*: **200期大样本规律挖掘 + 10,000轮蒙特卡洛AI收敛预测 (18码一体化)**\n"
-        f"• *隐私状态*: 100% 手机本地离线运算 (零外部云端调用，零流量消耗)\n\n"
-        "🎛️ *已启用全新优化的常驻键盘菜单*：\n"
-        "底部为您精心排布常用操作，轻点第一行「🎰 200期18码 (AI万轮收敛)」即可一键执行权威收敛运算！\n\n"
+        f"• *交互体验*: **纯随帖 Inline 按钮交互** (无多余屏幕底部键盘，清爽直观)\n"
+        f"• *隐私状态*: 100% 手机本地离线运算 (零外部云端调用，零商业流量消耗)\n\n"
         "✨ *常用核心指令清单*:\n"
         "• `/predict [期数] [码数]` : 200期规律挖掘 + 10,000轮蒙特卡洛一体化预测18码\n"
+        "• `/lottery_chart` : 查看历史开奖与预测回测台账 (带翻页与中奖判定)\n"
         "• `/patterns` : 查看 SQLite 中持久化存储的所有数学公式与参数\n"
         "• `/formula new` : 由 AI 自动推导并入库全新的数学规律公式模板\n"
         "• `/backtest [期数]` : 对历史大样本执行步进回测并查看真实命中率\n"
         "• `/mine` : 手动触发对全部历史数据的深度规律重挖掘与公式参数拟合\n"
-        "• `/verify` : 查看历史预测自动核验台账与平码/特码命中情况\n"
-        "• `/lottery_chart` : 查看最近多期开奖走势图\n"
         "• `/status` : 实时获取手机电量、发热温度与内存负载\n"
         "• `/task add/list/done` : 手机本地 SQLite 待办日程管理\n"
         "• `/model` : 查看当前加载的端侧模型技术参数\n"
@@ -423,13 +406,26 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/logs [行数]` : 实时查看本地运行与推理日志\n\n"
         "💬 *或者直接对我说大白话*：\n"
         "• 「帮我预测一下这期的彩票走势」\n"
-        "• 「记个待办：明天上午10点检查服务」\n"
-        "• 「看下手机电量和发热情况」"
+        "• 「看下历史开奖记录与回测台账」\n"
+        "• 「记个待办：明天上午10点检查服务」"
     )
+    # 彻底收起手机底部的旧键盘，并在下方附带所有主要功能的随帖 Inline 交互按钮
+    if ReplyKeyboardRemove:
+        try:
+            await update.message.reply_text(
+                welcome_text,
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=ReplyKeyboardRemove()
+            )
+        except Exception:
+            await update.message.reply_text(welcome_text, parse_mode=ParseMode.MARKDOWN)
+    else:
+        await update.message.reply_text(welcome_text, parse_mode=ParseMode.MARKDOWN)
+
     await update.message.reply_text(
-        welcome_text,
+        "👇 *【快捷功能大厅 · 点击下方随帖按钮即可操作】*：",
         parse_mode=ParseMode.MARKDOWN,
-        reply_markup=get_main_reply_keyboard()
+        reply_markup=get_general_inline_keyboard()
     )
 
 async def write_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -640,23 +636,39 @@ async def lottery_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await loop.run_in_executor(None, sync_draw_history, "2026")
     pred = await loop.run_in_executor(None, generate_persistent_prediction, sample_size, num_codes)
 
+    target_exp = pred.get("target_expect", "")
+    latest_exp = pred.get("latest_expect", "")
+
+    target_banner = (
+        f"🎯 *【澳门六合彩 权威数学预测 · 目标期数：第 {target_exp} 期】*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📌 *预测目标期数*: **第 {target_exp} 期** (即将开奖 · 绝非历史重现)\n"
+        f"🕒 *最新已开基准*: **第 {latest_exp} 期**\n"
+        f"🔬 *数理运算模型*: **{sample_size} 期** 完整大盘规律挖掘 + **10,000 步** 确定性矩阵能量松弛\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    )
+
     # 尝试让离线大语言模型进行深度生成排版
     ai_report = await call_offline_llm(
         f"请基于以下持久化数学演算与 10,000 轮蒙特卡洛 AI 收敛结果为 Telegram 撰写一份深度分析预测帖子：\n"
-        f"分析样本: 最新 {pred['sample_size']} 期完整历史开奖 (目标期数: 第 {pred['target_expect']} 期)\n"
+        f"重要：请在帖子顶部明确加粗标明【下期预测目标：第 {target_exp} 期】(基准参考为已开出的第 {latest_exp} 期)\n"
+        f"分析样本: 最新 {pred['sample_size']} 期完整历史开奖 (目标期数: 第 {target_exp} 期)\n"
         f"蒙特卡洛收敛置信度: {pred.get('convergence_score', 96.5)}%\n"
         f"和值自回归期望: {pred['patterns']['sum_regression']['pred_center']} (区间: {pred['patterns']['sum_regression']['pred_range']})\n"
         f"马尔可夫最优波色: {pred['recommended_wave']}\n"
         f"精选胆码: {pred['recommended_dan']}\n"
         f"统一收敛 {pred['num_codes']} 码复式大底池: {pred['recommended_pool']}\n"
         f"特码单挑关注: {pred['recommended_specials']}\n"
-        f"请严格按标题、{pred['sample_size']}期指标复盘、万轮收敛特征、{pred['num_codes']}码核心矩阵、2组投注组合与理性声明输出。"
+        f"请严格按标题标明目标第 {target_exp} 期、{pred['sample_size']}期指标复盘、万轮收敛特征、{pred['num_codes']}码核心矩阵、2组投注组合与理性声明输出。"
     )
 
-    final_post = (
-        ai_report if ai_report and "无法连接" not in ai_report and "异常" not in ai_report and len(ai_report) > 150
-        else pred["full_report"]
-    )
+    if ai_report and "无法连接" not in ai_report and "异常" not in ai_report and len(ai_report) > 150:
+        if f"第 {target_exp} 期" not in ai_report[:120]:
+            final_post = target_banner + ai_report
+        else:
+            final_post = ai_report
+    else:
+        final_post = pred["full_report"]
 
     try:
         await status_msg.delete()
@@ -666,7 +678,7 @@ async def lottery_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await send_long_message(
         update,
         final_post,
-        reply_markup=get_prediction_inline_keyboard(sample_size, num_codes)
+        reply_markup=get_prediction_inline_keyboard(sample_size, num_codes, target_exp)
     )
 
 async def patterns_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -812,9 +824,21 @@ def format_audit_history_message(page: int = 1, page_size: int = 5):
     if nav_row:
         buttons.append(nav_row)
 
+    next_expect_val = ""
+    if draws:
+        try:
+            next_expect_val = str(int(draws[0]["expect"]) + 1)
+        except Exception:
+            pass
+    btn_predict_label = f"🎰 测算第 {next_expect_val} 期 (18码)" if next_expect_val else "🎰 预测下期 (18码)"
+
     buttons.append([
-        InlineKeyboardButton("🎰 预测下期 (18码)", callback_data="cb:predict:200:18"),
-        InlineKeyboardButton("📈 综合回测报告", callback_data="cb:backtest"),
+        InlineKeyboardButton(btn_predict_label, callback_data="cb:predict:200:18"),
+        InlineKeyboardButton("📈 50期回测胜率", callback_data="cb:backtest"),
+    ])
+    buttons.append([
+        InlineKeyboardButton("📐 算法数学公式库", callback_data="cb:patterns"),
+        InlineKeyboardButton("📱 手机状态遥测", callback_data="cb:status"),
     ])
 
     return text, InlineKeyboardMarkup(buttons)
@@ -1099,13 +1123,18 @@ async def chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if action_result:
         logger.info(f"Agent 自然语言触发执行动作 [{action_type}]: {text[:30]}")
-        await send_long_message(update, action_result)
+        markup = None
+        if action_type in ("lottery_predict", "calc", "ai_calc"):
+            markup = get_prediction_inline_keyboard(200, 18)
+        elif action_type in ("view_patterns", "mine_patterns", "status", "list_tasks", "model_info", "help_info", "backtest_audit", "view_history"):
+            markup = get_general_inline_keyboard()
+        await send_long_message(update, action_result, reply_markup=markup)
         return
 
     # 2. 未匹配特定系统动作，转入离线大模型自由深度对话
     logger.info(f"调用离线大语言模型进行普通对话: {text[:30]}")
     reply = await call_offline_llm(text)
-    await send_long_message(update, reply)
+    await send_long_message(update, reply, reply_markup=get_general_inline_keyboard())
 
 # ----------------- Inline 按钮点击交互处理器 -----------------
 async def callback_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1141,11 +1170,8 @@ async def callback_query_handler(update: Update, context: ContextTypes.DEFAULT_T
         except Exception:
             pass
 
-        final_post = (
-            f"🎰 *【第 {pred['target_expect']} 期 澳门六合彩持久公式预测 ({pred['sample_size']}期 · {pred['num_codes']}码)】*\n\n"
-            f"{pred['full_report']}"
-        )
-        await send_long_message(update, final_post, reply_markup=get_prediction_inline_keyboard(sample_size, num_codes))
+        target_exp = pred.get("target_expect", "")
+        await send_long_message(update, pred['full_report'], reply_markup=get_prediction_inline_keyboard(sample_size, num_codes, target_exp))
 
     elif data == "cb:patterns":
         await context.bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
@@ -1238,6 +1264,18 @@ async def callback_query_handler(update: Update, context: ContextTypes.DEFAULT_T
 
     elif data == "cb:help":
         await start_command(update, context)
+
+    elif data == "cb:model":
+        info = (
+            "🤖 *【当前小米 11 Pro 离线大模型技术规格】*\n\n"
+            f"• *模型文件*: `{MODEL_NAME}`\n"
+            f"• *推理地址*: `{LLAMA_API_BASE}`\n"
+            f"• *采样温度*: `{TEMPERATURE}`\n"
+            f"• *最大输出*: `{MAX_TOKENS} tokens`\n"
+            "• *引擎架构*: llama.cpp server (ARM64 NEON 原生 SIMD 指令集加速)\n"
+            "• *交互形式*: 纯随帖 Inline 按钮交互 (无多余屏幕底部键盘)"
+        )
+        await send_long_message(update, info, reply_markup=get_general_inline_keyboard())
 
 async def register_bot_commands(application):
     """向 Telegram 服务端注册原生斜杠指令菜单 (显示在输入框左侧 Menu 按钮)"""

@@ -677,13 +677,14 @@ def generate_persistent_prediction(sample_size: int = 200, num_codes: int = 18, 
   方案B: {', '.join(f'{n:02d}' for n in combo2['regulars'])} + 特码 {combo2['special']:02d}
 
 请严格按 Telegram Markdown 输出格式，排版清晰：
-1. 📌 【第 {next_expect} 期 澳门六合彩 200期规律挖掘 · 10,000 步矩阵收敛预测 ({num_codes}码权威整合)】
-2. 🛡️ 【数理准则声明】(严正说明本预测绝无随机生成，全部号码 100% 源自最新 200 期历史记录数理发掘)
-3. ⚙️ 【200期大样本规律复盘】(邻号 88.4% 引力波、重号 72.4% 惯性、和值均线 AR(1)、马尔可夫波色、遗漏张力)
-4. 🔢 【AI 精选 {num_codes} 码复式大底矩阵】(核心金胆、均线稳码、极限回补冷码、完整大底全集)
-5. 🎯 【特码深度研判】(优势波色、推荐生肖、重点单挑)
-6. 🎫 【2 组实战推荐参考组合】
-7. ⚠️ 【数理概率学理性警示】
+1. 🎯 【澳门六合彩 权威数学预测 · 目标期数：第 {next_expect} 期】
+2. 📌 目标期数: 第 {next_expect} 期 (即将开奖) | 基准开奖: 第 {latest['expect']} 期 ({latest['openCodeStr']})
+3. 🛡️ 【数理准则声明】(严正说明本预测绝无随机生成，全部号码 100% 源自最新 200 期历史记录数理发掘)
+4. ⚙️ 【200期大样本规律复盘】(邻号 88.4% 引力波、重号 72.4% 惯性、和值均线 AR(1)、马尔可夫波色、遗漏张力)
+5. 🔢 【AI 精选 {num_codes} 码复式大底矩阵】(核心金胆、均线稳码、极限回补冷码、完整大底全集)
+6. 🎯 【特码深度研判】(优势波色、推荐生肖、重点单挑)
+7. 🎫 【2 组实战推荐参考组合】
+8. ⚠️ 【数理概率学理性警示】
 """
 
     report_text = ""
@@ -713,10 +714,19 @@ def generate_persistent_prediction(sample_size: int = 200, num_codes: int = 18, 
             f"• 综合判定: *{last_audit['win_type']}* | 历史≥3码覆盖胜率: **94.2%**\n\n"
         )
 
+    target_banner = (
+        f"🎯 *【澳门六合彩 权威数学预测 · 目标期数：第 {next_expect} 期】*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📌 *预测目标期数*: **第 {next_expect} 期** (即将开奖 · 绝非历史重现)\n"
+        f"🕒 *最新已开基准*: **第 {latest['expect']} 期** (`{latest['openCodeStr']}`)\n"
+        f"🔬 *数理运算模型*: **{actual_n} 期** 完整大盘规律挖掘 + **10,000 步** 确定性矩阵能量松弛\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    )
+
     if not report_text or "无法连接" in report_text or "异常" in report_text:
         # 本地确定性降级排版模版 (完全遵循 200 期真实数据挖掘与 10,000 步矩阵松弛求解结果)
         report_text = (
-            f"🎰 *【第 {next_expect} 期 澳门六合彩 200期规律 · 10,000 步收敛预测】*\n\n"
+            f"{target_banner}"
             f"{last_audit_section}"
             f"🛡️ *严正数理声明*: **本预测 100% 严禁随机生成**，全部号码均由最新 **{actual_n} 期** 完整历史开奖数据通过 8 大数学规律深度挖掘与 10,000 步确定性矩阵松弛求解收敛产出！\n\n"
             f"📊 *大盘样本*: 最新 **{actual_n} 期** 全量数据 (最新基准第 `{latest['expect']}` 期: `{latest['openCodeStr']}`)\n"
@@ -742,6 +752,10 @@ def generate_persistent_prediction(sample_size: int = 200, num_codes: int = 18, 
             f"• **{combo2['name']}**: `{', '.join(f'{n:02d}' for n in combo2['regulars'])}` + 特码 **`{combo2['special']:02d}`**\n\n"
             f"⚠️ *数理概率理性提示*: 彩票每一期开奖皆为独立随机概率事件，本预测基于 SQLite 持久化 {actual_n} 期数据与 10,000 步确定性矩阵松弛求解，绝无任何随机捏造，结果仅供数理研讨与参考。"
         )
+    else:
+        # LLM 输出前置保证醒目标头
+        if f"第 {next_expect} 期" not in report_text[:120]:
+            report_text = target_banner + report_text
 
     # 存储入预测日志表
     conn = get_db_connection()
@@ -773,6 +787,7 @@ def generate_persistent_prediction(sample_size: int = 200, num_codes: int = 18, 
         "convergence_score": convergence_score,
         "active_rules_count": active_rules_count,
         "target_expect": next_expect,
+        "latest_expect": latest["expect"],
         "recommended_dan": recommended_dan,
         "recommended_pool": recommended_pool,
         "recommended_balanced": recommended_balanced,
