@@ -1317,6 +1317,8 @@ def run_comprehensive_backtest(test_draws_count: int = 50, num_codes: int = 18) 
         "regular_hit_distribution": dict(regular_hit_distribution),
         "recent_samples": step_records,
         "benchmark_summary": f"在最近 {total_tested} 期严格回测中，{num_codes} 码复式大底平均单期命中 {avg_reg_hits} 个正码，3 码及以上命中覆盖率达到 {coverage_rate_18}%。"
+    }
+
 def get_historical_draws_with_audit(page: int = 1, page_size: int = 10, filter_type: str = "all", draws=None) -> Dict[str, Any]:
     """
     【历史开奖与预测回测台账整合 (支持翻页查看、18码/六肖/特波命中核验)】
