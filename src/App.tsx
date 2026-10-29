@@ -16,7 +16,7 @@ export default function App() {
   const [config, setConfig] = useState<BotConfig>({
     botToken: '',
     adminChatId: '',
-    selectedModelId: 'deepseek-r1-distill-qwen-1.5b',
+    selectedModelId: 'deepseek-r1-distill-qwen-7b',
     backendEngine: 'llamacpp',
     threads: 6,
     contextSize: 4096,

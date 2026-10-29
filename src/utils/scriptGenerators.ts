@@ -784,8 +784,8 @@ export function generateCrontabConfig(config: BotConfig): string {
 # 1. 每天早上 08:30 自动由离线模型生成早报并推送到您的 Telegram
 30 8 * * * cd $HOME/termux-telegram-ai-bot && bash cron_jobs.sh "每日科技早报" "总结最新端侧AI与开源硬件动态，包含3个核心要点" >> logs/cron.log 2>&1
 
-# 2. 每晚 20:30 (开奖前) 自动拉取澳门六合彩历史记录并由 AI 离线生成 200 期 18 码预测走势
-30 20 * * * cd $HOME/termux-telegram-ai-bot && bash cron_jobs.sh "澳门六合彩走势预测" >> logs/cron.log 2>&1
+# 2. 每天晚上 22:00 (21:33开奖后) 自动拉取开奖历史，计算10,000轮收敛18码并推送
+0 22 * * * cd $HOME/termux-telegram-ai-bot && bash cron_jobs.sh "澳门六合彩200期数理规律与18码预测" >> logs/cron.log 2>&1
 
 # 3. 每天晚上 21:30 自动生成今日工作复盘与明日待办清单
 30 21 * * * cd $HOME/termux-telegram-ai-bot && bash cron_jobs.sh "晚间复盘与明日待办" "提炼今日重点，提醒待办事项" >> logs/cron.log 2>&1
@@ -914,7 +914,19 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "${botToken}")
 ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "${adminId}")) if os.getenv("ADMIN_CHAT_ID", "${adminId}").isdigit() else 0
 ADMIN_ONLY = ${config.adminOnly ? 'True' : 'False'}
 LLAMA_API_BASE = "http://127.0.0.1:${config.port}/v1"
-MODEL_NAME = "${model.filename}"
+
+def resolve_active_model():
+    env_m = os.getenv("MODEL_NAME")
+    if env_m and str(env_m).strip():
+        return str(env_m).strip()
+    models_dir = os.path.join(os.path.dirname(__file__), "models")
+    if os.path.isdir(models_dir):
+        ggufs = [f for f in os.listdir(models_dir) if f.endswith(".gguf")]
+        if ggufs:
+            return ggufs[0]
+    return "${model.filename}"
+
+MODEL_NAME = resolve_active_model()
 SYSTEM_PROMPT = """${config.systemPrompt}"""
 DB_FILE = os.path.expanduser("tasks.db")
 
@@ -1207,8 +1219,23 @@ async def verify_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def lottery_chart_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
         return
-    from agent_executor import view_recent_draw_history
-    text = view_recent_draw_history(7)
+    page = 1
+    if context.args and context.args[0].isdigit():
+        page = max(1, int(context.args[0]))
+    from pattern_engine import get_historical_draws_with_audit
+    res = get_historical_draws_with_audit(page=page, page_size=5)
+    text = f"📜 *【澳门六合彩历史开奖与预测回测台账】* (第 {res['page']}/{res['total_pages']} 页 · 共 {res['total_draws']} 期)\\n\\n"
+    for d in res['draws']:
+        reg_s = ', '.join(f"{n:02d}" for n in d['regular_numbers'])
+        sp_s = f"{d['special_number']:02d} ({d['special_zodiac']})"
+        text += (
+            f"🔹 *第 {d['expect']} 期* ({d.get('open_time', '')[:10]})\\n"
+            f"• 真实开奖: \`{reg_s}\` + *\`{sp_s}\`*\\n"
+            f"• 预测18码: 命中 **{d['matched_regular_count']}** 个平码 {'+ **特码已中！**' if d['matched_special'] else '(特未中)'}\\n"
+            f"• 预测六肖: {', '.join(d['predicted_six_zodiacs'])} -> {'✅ 特肖命中' if d['hit_special_zodiac'] else '⚪ 未中'}\\n"
+            f"• 判定: *{d['win_type']}*\\n\\n"
+        )
+    text += f"💡 发送 \`/lottery_chart <页码>\` 翻页查阅历史 (如 \`/lottery_chart 2\`)"
     await send_long_message(update, text)
 
 async def pure_math_command(update: Update, context: ContextTypes.DEFAULT_TYPE):

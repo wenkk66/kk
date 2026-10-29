@@ -125,3 +125,43 @@ export interface ContentTaskTemplate {
   description: string;
   cronExpression: string;
 }
+
+export interface HistoricalDrawWithAudit {
+  expect: string;
+  openTime: string;
+  openCode: string;
+  regularNumbers: number[];
+  specialNumber: number;
+  specialWave: 'red' | 'blue' | 'green';
+  specialZodiac: string;
+  sum: number;
+  // 预测回测整合
+  predictedPool18: number[];
+  predictedSixZodiacs: string[];
+  predictedSpecialWave: 'red' | 'blue' | 'green';
+  // 命中核验数据
+  matchedRegularCount: number;
+  matchedSpecial: boolean;
+  hitSpecialZodiac: boolean;
+  hitSpecialWave: boolean;
+  totalHits: number;
+  winBadges: string[];
+  winType: string;
+}
+
+export interface HistoryAuditResponse {
+  success: boolean;
+  totalDraws: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  kpis: {
+    totalAudited: number;
+    avgRegularHits: number;
+    specialHitRate: string;
+    sixZodiacHitRate: string;
+    waveHitRate: string;
+    ge3HitsRate: string;
+  };
+  draws: HistoricalDrawWithAudit[];
+}

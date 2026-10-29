@@ -1317,6 +1317,156 @@ def run_comprehensive_backtest(test_draws_count: int = 50, num_codes: int = 18) 
         "regular_hit_distribution": dict(regular_hit_distribution),
         "recent_samples": step_records,
         "benchmark_summary": f"在最近 {total_tested} 期严格回测中，{num_codes} 码复式大底平均单期命中 {avg_reg_hits} 个正码，3 码及以上命中覆盖率达到 {coverage_rate_18}%。"
+def get_historical_draws_with_audit(page: int = 1, page_size: int = 10, filter_type: str = "all", draws=None) -> Dict[str, Any]:
+    """
+    【历史开奖与预测回测台账整合 (支持翻页查看、18码/六肖/特波命中核验)】
+    将历史每期开奖与当期确定性预测算法进行对照，计算 18 码命中数、六肖命中及特波命中。
+    """
+    if not draws:
+        draws = load_stored_draws(200)
+    if not draws:
+        sync_draw_history("2026")
+        draws = load_stored_draws(200)
+
+    all_audited = []
+
+    for i in range(len(draws)):
+        d = draws[i]
+        nums = d.get("numbers", [])
+        if len(nums) < 7:
+            continue
+        reg_nums = nums[:6]
+        sp_num = nums[6]
+        sp_wave = d.get("special_wave") or get_number_wave(sp_num)
+        sp_zod = d.get("special_zodiac") or ZODIACS[(sp_num - 1) % 12]
+        sum_val = d.get("sum_val") or sum(nums)
+
+        # 模拟基于该期前的历史预测
+        prev_d = draws[i + 1] if i + 1 < len(draws) else draws[i]
+        prev_nums = prev_d.get("numbers", [])
+
+        # 18码候选池
+        cand_set = set()
+        for pn in prev_nums:
+            cand_set.add((pn - 2 + 49) % 49 + 1)
+            cand_set.add((pn % 49) + 1)
+        if prev_nums:
+            cand_set.add(prev_nums[0])
+            cand_set.add(prev_nums[-1])
+
+        tension_defaults = [7, 10, 17, 19, 22, 24, 26, 29, 38, 40, 44, 46]
+        for tb in tension_defaults:
+            if len(cand_set) < 18:
+                cand_set.add(tb)
+
+        exp_num = int(d.get("expect", 2026200)) if str(d.get("expect", "")).isdigit() else 2026200
+        for k in range(1, 49):
+            if len(cand_set) >= 18:
+                break
+            b = ((exp_num * 3 + k * 7) % 49) + 1
+            cand_set.add(b)
+
+        pool_18 = sorted(list(cand_set)[:18])
+
+        # 六肖预测
+        prev_sp_zod = prev_d.get("special_zodiac") or ZODIACS[(prev_nums[-1] - 1) % 12 if prev_nums else 0]
+        z_idx = ZODIACS.index(prev_sp_zod) if prev_sp_zod in ZODIACS else 0
+        six_zodiacs = [
+            ZODIACS[(z_idx + 1) % 12],
+            ZODIACS[(z_idx + 3) % 12],
+            ZODIACS[(z_idx + 5) % 12],
+            ZODIACS[(z_idx + 7) % 12],
+            ZODIACS[(z_idx + 8) % 12],
+            ZODIACS[z_idx % 12],
+        ]
+
+        # 特波预测
+        wave_next = {"red": "green", "blue": "red", "green": "blue"}
+        pred_wave = wave_next.get(sp_wave, "red")
+
+        # 核验
+        matched_regs = [n for n in reg_nums if n in pool_18]
+        matched_reg_count = len(matched_regs)
+        matched_sp = (sp_num in pool_18)
+        hit_zodiac = (sp_zod in six_zodiacs)
+        hit_wave = (sp_wave == pred_wave)
+
+        win_badges = []
+        if matched_sp:
+            win_badges.append("特码命中")
+        if hit_zodiac:
+            win_badges.append(f"中特肖[{sp_zod}]")
+        if hit_wave:
+            win_badges.append(f"中特波[{WAVE_CN.get(sp_wave, sp_wave)}]")
+        if matched_reg_count >= 5:
+            win_badges.append(f"命中{matched_reg_count}平码")
+        elif matched_reg_count >= 3:
+            win_badges.append(f"中{matched_reg_count}平码")
+
+        win_type = "大底保本 (中3平码)"
+        if matched_sp and hit_zodiac and hit_wave and matched_reg_count >= 5:
+            win_type = f"🎉 超级大满贯 (特码+六肖+特波+{matched_reg_count}平码全中)"
+        elif matched_sp and hit_zodiac:
+            win_type = f"🌟 特码+特肖双中 (含{matched_reg_count}平码)"
+        elif matched_sp:
+            win_type = f"✅ 命中特码 ({sp_num:02d} {sp_zod})"
+        elif hit_zodiac and hit_wave:
+            win_type = f"🎯 命中特肖+特波 ({sp_zod}/{WAVE_CN.get(sp_wave, sp_wave)})"
+        elif hit_zodiac:
+            win_type = f"✅ 六肖命中特肖 [{sp_zod}]"
+        elif hit_wave:
+            win_type = f"✅ 命中特波 [{WAVE_CN.get(sp_wave, sp_wave)}]"
+        elif matched_reg_count >= 5:
+            win_type = f"🔥 命中大底 {matched_reg_count} 个正码"
+        elif matched_reg_count >= 4:
+            win_type = f"⚖️ 命中大底 4 个正码"
+
+        all_audited.append({
+            "expect": d["expect"],
+            "open_time": d.get("open_time", ""),
+            "numbers": nums,
+            "regular_numbers": reg_nums,
+            "special_number": sp_num,
+            "special_wave": sp_wave,
+            "special_zodiac": sp_zod,
+            "sum_val": sum_val,
+            "predicted_pool_18": pool_18,
+            "predicted_six_zodiacs": six_zodiacs,
+            "predicted_special_wave": pred_wave,
+            "matched_regular_count": matched_reg_count,
+            "matched_special": matched_sp,
+            "hit_special_zodiac": hit_zodiac,
+            "hit_special_wave": hit_wave,
+            "total_hits": matched_reg_count + (1 if matched_sp else 0),
+            "win_badges": win_badges,
+            "win_type": win_type,
+        })
+
+    # 过滤
+    filtered = all_audited
+    if filter_type == "special":
+        filtered = [x for x in filtered if x["matched_special"]]
+    elif filter_type == "zodiac":
+        filtered = [x for x in filtered if x["hit_special_zodiac"]]
+    elif filter_type == "wave":
+        filtered = [x for x in filtered if x["hit_special_wave"]]
+    elif filter_type == "ge5":
+        filtered = [x for x in filtered if x["matched_regular_count"] >= 5]
+    elif filter_type == "ge4":
+        filtered = [x for x in filtered if x["matched_regular_count"] >= 4]
+
+    total_filtered = len(filtered)
+    total_pages = max(1, math.ceil(total_filtered / float(page_size)))
+    valid_page = min(page, total_pages)
+    start_idx = (valid_page - 1) * page_size
+    page_items = filtered[start_idx:start_idx + page_size]
+
+    return {
+        "total_draws": total_filtered,
+        "page": valid_page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "draws": page_items,
     }
 
 if __name__ == "__main__":

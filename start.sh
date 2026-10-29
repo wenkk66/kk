@@ -93,20 +93,19 @@ PORT=8080
 if pgrep -f "llama-server" > /dev/null; then
     echo -e "${GREEN}✓ llama-server 已在后台运行中 (PID: $(pgrep -f llama-server | head -n 1))${NC}"
 else
-    # 三星 Galaxy Note 9 深度调优：
-    # 无论是骁龙 845 还是猎户座 9810 均为 4大核 + 4小核。
-    # 绑定 4 线程避免小核木桶效应和过热降频，达到最大 tokens/s
-    CORES=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 4)
+    # 小米 11 Pro 硬件调优 (高通骁龙 888 / 8 核心)：
+    # 结合 Cortex-X1 超大核与 A78 大核，默认配置 6 线程，兼顾吞吐量与温控
+    CORES=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 8)
     if [ "$CORES" -ge 8 ]; then
-        DEFAULT_THREADS=4
+        DEFAULT_THREADS=6
     elif [ "$CORES" -ge 4 ]; then
-        DEFAULT_THREADS=3
+        DEFAULT_THREADS=4
     else
         DEFAULT_THREADS=2
     fi
     THREADS="${LLAMA_THREADS:-$DEFAULT_THREADS}"
     
-    echo -e "${YELLOW}>>> 启动 llama-server (端口: ${PORT}, Note 9 大核线程: ${THREADS}, 模型: ${MODEL_FILE})...${NC}"
+    echo -e "${YELLOW}>>> 启动 llama-server (端口: ${PORT}, 推理线程: ${THREADS}, 模型: ${MODEL_FILE})...${NC}"
     nohup "$PROJECT_DIR/llama-server" \
         -m "$MODEL_PATH" \
         --host 127.0.0.1 \

@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # ==============================================================================
-# 查看当前 Termux 节点与离线模型运行状态 (专为三星 Note 9 优化)
+# 查看当前 Termux 节点与离线模型运行状态 (专为小米 11 Pro 优化)
 # ==============================================================================
 
 CYAN='\033[0;36m'
@@ -10,7 +10,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 echo -e "${CYAN}====================================================================${NC}"
-echo -e "${CYAN}        📱 三星 Galaxy Note 9 / Termux 离线节点监控状态              ${NC}"
+echo -e "${CYAN}        📱 小米 11 Pro / Termux 离线节点监控状态              ${NC}"
 echo -e "${CYAN}====================================================================${NC}"
 
 # 0. 查找并显示配置文件路径
@@ -85,8 +85,8 @@ if [ -f "patterns.db" ]; then
     echo "• SQLite 规律数据库:      已归档 ${DRAWS_COUNT} 期历史开奖，已固化 ${RULES_COUNT} 组数学公式"
 fi
 
-# 6. 内存状况 (针对三星 Note 9 6GB/8GB 内存)
-echo -e "\n${CYAN}--- 三星 Note 9 物理内存状态 ---${NC}"
+# 6. 内存状况 (针对小米 11 Pro 8GB/12GB 物理内存)
+echo -e "\n${CYAN}--- 小米 11 Pro 物理内存状态 ---${NC}"
 if [ -f "/proc/meminfo" ]; then
     TOTAL_MEM=$(grep MemTotal /proc/meminfo | awk '{print $2}')
     AVAIL_MEM=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
@@ -95,12 +95,12 @@ if [ -f "/proc/meminfo" ]; then
     USED_MB=$((TOTAL_MB - AVAIL_MB))
     PERCENT=$((USED_MB * 100 / TOTAL_MB))
     echo -e "• 内存分配: 已用 ${USED_MB} MB / 总共 ${TOTAL_MB} MB (${PERCENT}%，可用空闲: ${AVAIL_MB} MB)"
-    if [ "$AVAIL_MB" -gt 1500 ]; then
-        echo -e "• 内存裕量: ${GREEN}非常充裕 (>1.5GB)，系统 Low Memory Killer 不会触发${NC}"
-    elif [ "$AVAIL_MB" -gt 800 ]; then
-        echo -e "• 内存裕量: ${GREEN}正常 (可稳定运行 1.5B 模型)${NC}"
+    if [ "$AVAIL_MB" -gt 3000 ]; then
+        echo -e "• 内存裕量: ${GREEN}非常充裕 (>3GB)，可流畅稳定运行 DeepSeek-R1 7B 模型${NC}"
+    elif [ "$AVAIL_MB" -gt 1500 ]; then
+        echo -e "• 内存裕量: ${GREEN}正常 (可稳定运行 3B/1.5B 模型)${NC}"
     else
-        echo -e "• 内存裕量: ${YELLOW}紧张，建议关闭其他后台应用${NC}"
+        echo -e "• 内存裕量: ${YELLOW}紧张，建议关闭其他大型后台应用${NC}"
     fi
 fi
 

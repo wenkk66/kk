@@ -143,12 +143,14 @@ def get_system_telemetry() -> str:
     except Exception:
         pass
 
-    # 设备型号识别 (如 SM-N9600 / SM-N960F)
-    device_model = "Samsung Galaxy Note 9 (ARM64)"
+    # 设备型号识别 (动态读取 Android 系统属性，默认适配小米 11 Pro)
+    device_model = "Xiaomi 11 Pro (骁龙 888 / ARM64)"
     try:
+        brand = subprocess.check_output(["getprop", "ro.product.brand"], timeout=1).decode().strip()
         model_out = subprocess.check_output(["getprop", "ro.product.model"], timeout=1).decode().strip()
         if model_out:
-            device_model = f"三星 {model_out} (Galaxy Note 9)"
+            brand_prefix = f"{brand.capitalize()} " if brand and brand.lower() not in model_out.lower() else ""
+            device_model = f"{brand_prefix}{model_out} (ARM64)"
     except Exception:
         pass
 

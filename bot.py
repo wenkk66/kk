@@ -105,6 +105,7 @@ from pattern_engine import (
     get_all_stored_formulas,
     generate_ai_custom_formula,
     run_comprehensive_backtest,
+    get_historical_draws_with_audit,
 )
 from agent_executor import (
     dispatch_natural_language_intent,
@@ -151,9 +152,22 @@ ADMIN_CHAT_ID = int(ADMIN_CHAT_ID_RAW) if ADMIN_CHAT_ID_RAW.isdigit() else 0
 ADMIN_ONLY_RAW = os.getenv("ADMIN_ONLY", "true").lower()
 ADMIN_ONLY = ADMIN_ONLY_RAW in ("true", "1", "yes")
 
-# 本地 llama.cpp server 接口地址与三星 Note 9 优化默认值
+# 本地 llama.cpp server 接口地址与小米 11 Pro 优化默认值
 LLAMA_API_BASE = os.getenv("LLAMA_API_BASE", "http://127.0.0.1:8080/v1").rstrip("/")
-MODEL_NAME = os.getenv("MODEL_NAME", "qwen2.5-3b-instruct-q4_k_m.gguf")
+
+def resolve_active_model_name() -> str:
+    env_name = os.getenv("MODEL_NAME")
+    if env_name and str(env_name).strip():
+        return str(env_name).strip()
+    # 智能扫描本地 models/ 目录下的第一个 .gguf 模型文件
+    models_dir = os.path.join(os.path.dirname(__file__), "models")
+    if os.path.isdir(models_dir):
+        ggufs = [f for f in os.listdir(models_dir) if f.endswith(".gguf")]
+        if ggufs:
+            return ggufs[0]
+    return "deepseek-r1-distill-qwen-7b-q4_k_m.gguf"
+
+MODEL_NAME = resolve_active_model_name()
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2048"))
 
@@ -724,38 +738,79 @@ async def verify_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text += "系统将在每期开奖后自动比对并动态调整公式置信度权重。"
     await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
+def format_audit_history_message(page: int = 1, page_size: int = 5):
+    res = get_historical_draws_with_audit(page=page, page_size=page_size)
+    total_draws = res["total_draws"]
+    total_pages = res["total_pages"]
+    cur_page = res["page"]
+    draws = res["draws"]
+
+    text = f"📜 *【澳门六合彩历史开奖与预测回测台账】* (第 {cur_page}/{total_pages} 页 · 共 {total_draws} 期)\n"
+    text += "_采用步进零未来信息回溯，逐期比对 18 码大底与六肖核验详情_\n\n"
+
+    for d in draws:
+        exp = d["expect"]
+        date_str = d.get("open_time", "")[:10]
+        sp_num = d["special_number"]
+        sp_zod = d["special_zodiac"]
+        sp_wave = d["special_wave"]
+        sp_wave_str = WAVE_CN.get(sp_wave, sp_wave)
+
+        reg_str = ", ".join(f"{n:02d}" for n in d["regular_numbers"])
+        matched_reg = d["matched_regular_count"]
+        matched_sp = d["matched_special"]
+        hit_zod = d["hit_special_zodiac"]
+        hit_wave = d["hit_special_wave"]
+
+        badges = []
+        if matched_sp:
+            badges.append("★特码命中")
+        if hit_zod:
+            badges.append(f"🐉中特肖[{sp_zod}]")
+        if hit_wave:
+            badges.append(f"🌊中特波[{sp_wave_str}]")
+        badges.append(f"🎯中{matched_reg}/6平码")
+        badge_line = " ".join(f"`[{b}]`" for b in badges)
+
+        pred_zodiacs = ", ".join(d["predicted_six_zodiacs"])
+        text += (
+            f"🔹 *第 {exp} 期* ({date_str})  {badge_line}\n"
+            f"• 真实开奖: `{reg_str}` + *`{sp_num:02d}`* ({sp_zod}/{sp_wave_str})\n"
+            f"• 预测18码: 命中 **{matched_reg}** 个平码 {'+ **特码已中！**' if matched_sp else '(特码未中)'}\n"
+            f"• 预测六肖: `{pred_zodiacs}` -> {'✅ 特肖命中' if hit_zod else '⚪ 未中'}\n"
+            f"• 综合判定: *{d['win_type']}*\n\n"
+        )
+
+    buttons = []
+    nav_row = []
+    if cur_page > 1:
+        nav_row.append(InlineKeyboardButton("⬅️ 上一页", callback_data=f"cb:chart:{cur_page - 1}"))
+    nav_row.append(InlineKeyboardButton(f"📄 {cur_page}/{total_pages}", callback_data=f"cb:chart:{cur_page}"))
+    if cur_page < total_pages:
+        nav_row.append(InlineKeyboardButton("下一页 ➡️", callback_data=f"cb:chart:{cur_page + 1}"))
+
+    if nav_row:
+        buttons.append(nav_row)
+
+    buttons.append([
+        InlineKeyboardButton("🎰 预测下期 (18码)", callback_data="cb:predict:200:18"),
+        InlineKeyboardButton("📈 综合回测报告", callback_data="cb:backtest"),
+    ])
+
+    return text, InlineKeyboardMarkup(buttons)
+
 async def lottery_chart_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """查看近多期开奖走势图"""
+    """查看历史开奖记录与预测回测台账 (带翻页)"""
     if not check_auth(update):
         return
 
-    limit = 7
+    page = 1
     if context.args and context.args[0].isdigit():
-        limit = min(15, max(3, int(context.args[0])))
+        page = max(1, int(context.args[0]))
 
     loop = asyncio.get_running_loop()
-    draws = await loop.run_in_executor(None, fetch_lottery_history, "2026")
-    if not draws:
-        draws = await loop.run_in_executor(None, fetch_lottery_history, "2025")
-
-    if not draws:
-        await update.message.reply_text("❌ 获取开奖历史数据失败。")
-        return
-
-    stats = compute_statistics(draws, limit)
-    recent = stats["recentDraws"]
-
-    text = f"📊 *澳门六合彩近 {len(recent)} 期开奖走势*\n\n"
-    for d in recent:
-        wave_str = WAVE_CN.get(d["specialWave"], d["specialWave"])
-        text += (
-            f"• **第 {d['expect']} 期** ({d['openTime'][:10]})\n"
-            f"  号码: `{d['openCodeStr']}`\n"
-            f"  特码: **`{d['specialNumber']:02d}`** ({wave_str} / {d['specialZodiac']}) · 和值: {d['sum']}\n\n"
-        )
-
-    text += "💡 发送 `/predict` 即可让 AI 基于以上走势生成下期深度推断与组合推荐。"
-    await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+    text, reply_markup = await loop.run_in_executor(None, format_audit_history_message, page, 5)
+    await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup)
 
 async def formula_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """管理与发掘 AI 规律公式模板 (例如 /formula new [类型])"""
@@ -1044,9 +1099,20 @@ async def callback_query_handler(update: Update, context: ContextTypes.DEFAULT_T
             pass
         await send_long_message(update, mine_res, reply_markup=get_prediction_inline_keyboard(200, 18))
 
+    elif data.startswith("cb:chart:"):
+        page_str = data.split(":")[-1]
+        page = int(page_str) if page_str.isdigit() else 1
+        loop = asyncio.get_running_loop()
+        text, reply_markup = await loop.run_in_executor(None, format_audit_history_message, page, 5)
+        try:
+            await query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup)
+        except Exception:
+            await query.message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup)
+
     elif data == "cb:history":
-        history_text = view_recent_draw_history(7)
-        await send_long_message(update, history_text, reply_markup=get_general_inline_keyboard())
+        loop = asyncio.get_running_loop()
+        text, reply_markup = await loop.run_in_executor(None, format_audit_history_message, 1, 5)
+        await send_long_message(update, text, reply_markup=reply_markup)
 
     elif data == "cb:status":
         status_text = get_system_telemetry()

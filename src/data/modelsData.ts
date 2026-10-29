@@ -194,7 +194,7 @@ export const CONTENT_TASK_TEMPLATES: ContentTaskTemplate[] = [
     category: 'daily',
     defaultTopic: '根据最新200期开奖记录深入挖掘数学规律，推导精选18码复式大底与特码研判',
     systemPromptAddon: '请作为深谙数理统计与高维随机过程建模的专家，基于 8 大持久化数学模型（和值自回归、马尔可夫波色转移、冷热遗漏极限张力、尾数泊松循环、邻近对码 N±1 引力波、上期重码驻留惯性、贝叶斯威布尔生存危险度、双码共生拓扑）以及 10,000 轮蒙特卡洛一体化收敛算法，输出严谨权威的 18 码复式大底与实战对冲研判。',
-    description: '通过 Cron 每晚 20:30 (开奖前半小时) 自动拉取开奖历史，由离线引擎自动计算 10,000 轮收敛 18 码并推送到 Telegram。',
-    cronExpression: '30 20 * * *',
+    description: '通过 Cron 每晚 22:00 (21:33开奖后) 自动拉取当日开奖，由离线引擎自动计算 10,000 轮收敛 18 码并推送到 Telegram。',
+    cronExpression: '0 22 * * *',
   },
 ];

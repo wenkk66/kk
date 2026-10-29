@@ -337,8 +337,8 @@ export const DeployConfigTab: React.FC<DeployConfigTabProps> = ({
                   className="w-full px-2.5 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-md text-slate-200 focus:outline-none focus:border-cyan-500/60 font-mono"
                 >
                   <option value={2}>2 核心 (省电低发热)</option>
-                  <option value={4}>4 核心 (Note 9 推荐)</option>
-                  <option value={6}>6 核心 (骁龙旗舰推荐)</option>
+                  <option value={4}>4 核心 (轻量/中端推荐)</option>
+                  <option value={6}>6 核心 (小米 11 Pro 推荐)</option>
                   <option value={8}>8 核心 (满血全开)</option>
                 </select>
               </div>
@@ -523,7 +523,7 @@ export const DeployConfigTab: React.FC<DeployConfigTabProps> = ({
           <div className="p-4 rounded-lg bg-slate-900/60 border border-slate-800 text-xs space-y-2.5">
             <h3 className="font-semibold text-slate-200 flex items-center gap-2">
               <Layers className="w-4 h-4 text-cyan-400" />
-              安卓手机 Termux 极速上线操作步骤 (三星 Note 9 专享调优)
+              安卓手机 Termux 极速上线操作步骤 (小米 11 Pro 旗舰调优)
             </h3>
             <ol className="list-decimal list-inside space-y-1.5 text-slate-400 pl-1">
               <li>
